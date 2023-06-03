@@ -25,13 +25,27 @@ func (s *IMServiceImpl) Send(ctx context.Context, req *rpc.SendRequest) (*rpc.Se
 		panic("this shouldn't happen")
 	}
 
-	if chatParticipants[0] != req.Message.Sender && chatParticipants[1] != req.Message.Sender {
+	var sender, receiver string
+	if chatParticipants[0] == req.Message.Sender {
+		sender, receiver = chatParticipants[0], chatParticipants[1]
+	} else if chatParticipants[1] == req.Message.Sender {
+		receiver, sender = chatParticipants[0], chatParticipants[1]
+	} else {
 		resp.Code, resp.Msg = 2, "sender name must be in the chat"
 		return resp, nil
 	}
 
 	if chatParticipants[0] == chatParticipants[1] {
 		resp.Code, resp.Msg = 3, "chat name must contain different participants"
+		return resp, nil
+	}
+
+	newMessage := Message{Sender: sender, Receiver: receiver, Text: req.Message.Text}
+
+	result := defaultDB.Create(newMessage)
+	if result.Error != nil {
+		log.Error(result.Error)
+		resp.Code, resp.Msg = 4, "error saving message"
 		return resp, nil
 	}
 
